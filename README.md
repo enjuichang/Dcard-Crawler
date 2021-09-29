@@ -16,7 +16,7 @@ git clone https://github.com/enjuichang/Dcard-Crawler.git
 5. 執行程式
 
 ## English Version
-Due to the inaccessibility of crawling Dcard after the new update, this program scrapes the data from [PTT Brain](https://www.pttbrain.com/), which has the top 200 posts for each tags on Dcard.
+Due to the inaccessibility of crawling Dcard after the new update, this program scrapes the data from [PTT Brain](https://www.pttbrain.com/), which has the top 200 posts for each tag on Dcard.
 
 ## Getting Started
 1. Clone this repo to your local computer：
