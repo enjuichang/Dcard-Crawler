@@ -6,11 +6,12 @@ from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 import re
 
-
+# Chrome Driver Path
 PATH = "/Users/enjuichang/chromedriver"
 driver = webdriver.Chrome(PATH)
 
 
+### List of lists for each classification label ###
 URLs = [
     [
         "https://www.pttbrain.com/dcard/forum/c332e370-8d22-4b07-80ce-f27a93872962",
@@ -123,20 +124,19 @@ URLs = [
     ]
 ]
 
+### Classification Labels ###
 labelLIST = ["運動","藝文","職場","議題","生活","教育","科技","情感","時事","財經","ACG","娛樂"]
 
-def remove_emoji(string):
-    emoji_pattern = re.compile("["
-                           u"\U0001F600-\U0001F64F"  # emoticons
-                           u"\U0001F300-\U0001F5FF"  # symbols & pictographs
-                           u"\U0001F680-\U0001F6FF"  # transport & map symbols
-                           u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
-                           u"\U00002702-\U000027B0"
-                           u"\U000024C2-\U0001F251"
-                           "]+", flags=re.UNICODE)
-    return emoji_pattern.sub(r'', string)
-
 def extractTitle(string):
+    '''
+    Extract and parse title of article
+    ---
+    Input:
+    - string (str): Title of article
+
+    Output:
+    - string (str): Parsed title
+    '''
     str_compiler = re.compile('\\n+.+')
     replaceParts = str_compiler.findall(string)
     for i in replaceParts:
@@ -144,6 +144,15 @@ def extractTitle(string):
     return string
 
 def extractContent(string):
+    '''
+    Extract and parse content of article.
+    ---
+    Input:
+    - string (str): Content of article
+
+    Output:
+    - string (str): parsed content
+    '''
     str_compiler = re.compile(r'https?://\S+|www\.\S+')
     replaceParts = str_compiler.findall(string)
     for i in replaceParts:
@@ -152,41 +161,53 @@ def extractContent(string):
     return string
 
 
-titles = []
-contents = []
+if __name__ == "__main__":
+    ### Storage ###
+    titles = []
+    contents = []
 
-for k in range(len(URLs)):
-    id = labelLIST[k]
-    for j in range(len(URLs[k])):
-        driver.get(URLs[k][j])
-        for i in range(40):
-                for i in range(1,6):
-                    xpath = "//div[@class='ui container'][4]/div[@class='ui attached segment']/div[@class='ui large animated divided selection relaxed list']/a[@class='item']["+str(i)+"]"
-                    page = WebDriverWait(driver,10).until(
-                            EC.element_to_be_clickable((By.XPATH, xpath))
-                        )
-                    page.click()
-                    title = WebDriverWait(driver,10).until(
-                            EC.presence_of_all_elements_located((By.XPATH, "//h2[@class='ui left floated header']"))
-                        )
+    ### Run through all classification labels ###
+    for k in range(len(URLs)):
+        id = labelLIST[k]
+
+        ### Run through all Dcard tags in each label ###
+        for j in range(len(URLs[k])):
+            driver.get(URLs[k][j])
+
+            ### Run through all pages for each Dcard tag ###
+            for i in range(40): # Please check if Dcard tag has 40 pages
+
+                    ### Run through all articles in each page ###
+                    for i in range(1,6):
+                        # Find artcle and click
+                        xpath = "//div[@class='ui container'][4]/div[@class='ui attached segment']/div[@class='ui large animated divided selection relaxed list']/a[@class='item']["+str(i)+"]"
+                        page = WebDriverWait(driver,10).until(
+                                EC.element_to_be_clickable((By.XPATH, xpath))
+                            )
+                        page.click()
+
+                        # Find title and content
+                        title = WebDriverWait(driver,10).until(
+                                EC.presence_of_all_elements_located((By.XPATH, "//h2[@class='ui left floated header']"))
+                            )
+                        content = driver.find_element_by_xpath("//p/div[@class='blurring dimmable']/span")
+
+                        # Extract title and content
+                        header = extractTitle(title[0].text)
+                        text = extractContent(content.text)
+                        text = text.replace("\n"," ").replace("   ","").replace("#","").replace("-------","").replace("…","").replace("(ì _ í)","").replace("🥲","").replace("⋯⋯","").replace("....","").replace(" / ","").replace("ಥ_ಥ","").replace(">","").replace("<","").replace("“","").replace("”","").replace("~","")
+                        
+                        # Append classification label and text (title+content)
+                        titles.append(id)
+                        contents.append(header+" "+text)
+                        driver.back() # Go back from article page
                     
-                    content = driver.find_element_by_xpath("//p/div[@class='blurring dimmable']/span")
+                    # Click to next page
+                    WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.LINK_TEXT, "⟩"))).click()
+                    #WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//div[@class='ui pagination menu']/a[@aria-label='Next item']"))).click()
 
+    driver.quit() # Quit Chrome
 
-                    titles.append(id)
-
-                    header = extractTitle(title[0].text)
-                    text = extractContent(content.text)
-                    text = text.replace("\n"," ").replace("   ","").replace("#","").replace("-------","").replace("…","").replace("(ì _ í)","").replace("🥲","").replace("⋯⋯","").replace("....","").replace(" / ","").replace("ಥ_ಥ","").replace(">","").replace("<","").replace("“","").replace("”","").replace("~","")
-                    contents.append(header+" "+text)
-                    print(id,header+" "+text)
-                    driver.back()
-                
-                WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.LINK_TEXT, "⟩"))).click()
-                #WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//div[@class='ui pagination menu']/a[@aria-label='Next item']"))).click()
-
-
-print("Succeed")
-driver.quit()
-outputDF = pd.DataFrame({"id": titles,"content":contents})
-outputDF.to_csv("dcard/CSV/dcard.csv")
+    ### Save to CSV ###
+    outputDF = pd.DataFrame({"id": titles,"content":contents})
+    outputDF.to_csv("dcard/CSV/dcard.csv")
